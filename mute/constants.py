@@ -36,7 +36,13 @@ angles = _ANGLES
 
 # Angles in [degrees] specifically for the calculation of surface flux matrices
 
-ANGLES_FOR_S_FLUXES = np.linspace(0, 90, 20)
+angles_lin_cos_theta = np.arccos(np.linspace(1,0,11))
+angles_lin_cos_theta_low = angles_lin_cos_theta[:-1]
+angles_lin_cos_theta_high = angles_lin_cos_theta[1:]
+angles_lin_cos_theta_center = np.arccos((np.cos(angles_lin_cos_theta_high)+np.cos(angles_lin_cos_theta_low))/2)
+angles_lin_cos_theta_center_deg=np.rad2deg(angles_lin_cos_theta_center)
+
+ANGLES_FOR_S_FLUXES = angles_lin_cos_theta_center_deg
 
 # Other constants
 # The rest mass of a muon in [MeV]

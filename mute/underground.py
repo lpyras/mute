@@ -19,6 +19,7 @@ import scipy.interpolate as sciint
 import mute.constants as constants
 import mute.surface as surface
 import mute.propagation as propagation
+import mute.constants as mtc
 
 # Perform the convolution for underground fluxes
 
@@ -66,13 +67,8 @@ def calc_u_fluxes(
     s_fluxes=None,
     survival_probability_tensor=None,
     full_tensor=False,
-    primary_model="GSF",
-    interaction_model="SIBYLL-2.3c",
-    atmosphere="CORSIKA",
-    location="USStd",
-    month=None,
     output=None,
-    file_name="",
+    output_file_name="",
     force=False,
 ):
 
@@ -84,40 +80,18 @@ def calc_u_fluxes(
     Parameters
     ----------
     s_fluxes : NumPy ndarray, optional (default: taken from surface.load_s_fluxes_from_file())
-        A surface flux matrix of shape (91, 20).
+        A surface flux matrix of shape (n_energies, n_angles).
 
     survival_probability_tensor : NumPy ndarray, optional (default: taken from propagation.load_survival_probability_tensor_from_file())
-        A survival probability tensor of shape (91, 28, 91).
+        A survival probability tensor of shape (n_energies, 28, n_energies).
 
     full_tensor : bool, optional (default: False)
-        If True, the full tensor of shape (28, 91, 20) will be returned. Otherwise, if the overburden type is flat, a two-dimensional matrix of shape (91, 28) will be returned.
-
-    primary_model : str in {"GSF", "HG", "GH", "ZS", "ZSP", "PL27"} or tuple, optional (default: "GSF")
-        The primary flux model to use in MCEq. Options:
-        GSF  = GlobalSplineFitBeta
-        HG   = HillasGaisser2012 (H3a)
-        GH   = GaisserHonda
-        ZS   = Zatsepin-Sokolskaya (Default)
-        ZSP  = Zatsepin-Sokolskaya (PAMELA)
-        PL27 = SimplePowerlaw27
-        Alternatively, this can be set with a tuple. For example: (pm.GaisserStanevTilav, "3-gen").
-
-    interaction_model : str, optional (default: "SIBYLL-2.3c")
-        The hadronic interaction model to use in MCEq. See the Tutorial or MCEq documentation for a list of options.
-
-    atmosphere : {"CORSIKA", "MSIS00"}, optional (default: "CORSIKA")
-        The atmospheric model to use in MCEq. For US Standard Atmosphere, use "CORSIKA". For seasonal variations, use "MSIS00".
-
-    location : str, optional (default: "USStd")
-        The name of the location for which to calculate the surface fluxes. See the Tutorial or MCEq documentation for a list of options.
-
-    month : str, optional (default: None)
-        The month for which to calculate the surface fluxes. For US Standard Atmosphere, use None. For seasonal variations, use the month name.
+        If True, the full tensor of shape (28, n_energies, n_angles) will be returned. Otherwise, if the overburden type is flat, a two-dimensional matrix of shape (91, 28) will be returned.
 
     output : bool, optional (default: taken from constants.get_output())
         If True, an output file will be created to store the results.
 
-    file_name : str, optional (default: constructed from input parameters)
+    output_file_name : str, optional (default: constructed from input parameters)
         The name of the file in which to store the results. If output is False or None, this is ignored.
 
     force : bool
@@ -130,7 +104,6 @@ def calc_u_fluxes(
     """
 
     # Check values
-
     constants._check_constants()
 
     if output is None:
@@ -141,12 +114,6 @@ def calc_u_fluxes(
 
     if constants.get_verbose() > 1:
         print("Calculating underground fluxes.")
-
-    if s_fluxes is None:
-
-        s_fluxes = surface.load_s_fluxes_from_file(
-            primary_model, interaction_model, atmosphere, location, month, force=force
-        )
 
     if survival_probability_tensor is None:
 
@@ -204,15 +171,15 @@ def calc_u_fluxes(
                 os.path.join(constants.get_directory(), "underground"), force=force
             )
 
-            if file_name == "" or not isinstance(file_name, str):
+            if output_file_name == "" or not isinstance(output_file_name, str):
 
-                file_name = os.path.join(
+                output_file_name = os.path.join(
                     constants.get_directory(),
                     "underground",
                     "{0}_Underground_Fluxes.txt".format(constants.get_lab()),
                 )
 
-            file_out = open(file_name, "w")
+            file_out = open(output_file_name, "w")
 
             for u in range(len(constants.ENERGIES)):
 
@@ -227,7 +194,7 @@ def calc_u_fluxes(
             file_out.close()
 
             if constants.get_verbose() > 1:
-                print(f"Underground fluxes written to {file_name}.")
+                print(f"Underground fluxes written to {output_file_name}.")
 
         return u_fluxes
 
@@ -248,15 +215,15 @@ def calc_u_fluxes(
                 os.path.join(constants.get_directory(), "underground"), force=force
             )
 
-            if file_name == "" or not isinstance(file_name, str):
+            if output_file_name == "" or not isinstance(output_file_name, str):
 
-                file_name = os.path.join(
+                output_file_name = os.path.join(
                     constants.get_directory(),
                     "underground",
                     "{0}_Underground_Fluxes.txt".format(constants.get_lab()),
                 )
 
-            file_out = open(file_name, "w")
+            file_out = open(output_file_name, "w")
 
             for x in range(len(constants._SLANT_DEPTHS)):
 
@@ -276,7 +243,7 @@ def calc_u_fluxes(
             file_out.close()
 
             if constants.get_verbose() > 1:
-                print(f"Underground fluxes written to {file_name}.")
+                print(f"Underground fluxes written to {output_file_name}.")
 
         return u_fluxes_from_convolution
 
@@ -315,7 +282,8 @@ def _create_interpolator(u_intensities):
 def calc_u_intensities(method=None, output=None, file_name="", force=False, **kwargs):
 
     """
-    Calculate underground intensities in units of [(cm^2 s sr)^-1].
+    Calculate underground intensities in units of [(cm^2 s sr)^-1]. 
+    If u_fluxes is given, the intensities will be calculated from that tensor. Otherwise, the intensities will be calculated from the provided surface fluxes and survival probabilities.
 
     Parameters
     ----------
@@ -355,27 +323,6 @@ def calc_u_intensities(method=None, output=None, file_name="", force=False, **kw
     E_th : float, optional (default: 0)
         An energy threshold in [MeV].
 
-    primary_model : str in {"GSF", "HG", "GH", "ZS", "ZSP", "PL27"} or tuple, optional (default: "GSF")
-        The primary flux model to use in MCEq. Options:
-        GSF  = GlobalSplineFitBeta
-        HG   = HillasGaisser2012 (H3a)
-        GH   = GaisserHonda
-        ZS   = Zatsepin-Sokolskaya (Default)
-        ZSP  = Zatsepin-Sokolskaya (PAMELA)
-        PL27 = SimplePowerlaw27
-        Alternatively, this can be set with a tuple. For example: (pm.GaisserStanevTilav, "3-gen").
-
-    interaction_model : str, optional (default: "SIBYLL-2.3c")
-        The hadronic interaction model to use in MCEq. See the Tutorial or MCEq documentation for a list of options.
-
-    atmosphere : {"CORSIKA", "MSIS00"}, optional (default: "CORSIKA")
-        The atmospheric model to use in MCEq. For US Standard Atmosphere, use "CORSIKA". For seasonal variations, use "MSIS00".
-
-    location : str, optional (default: "USStd")
-        The name of the location for which to calculate the surface fluxes. See the Tutorial or MCEq documentation for a list of options.
-
-    month : str, optional (default: None)
-        The month for which to calculate the surface fluxes. For US Standard Atmosphere, use None. For seasonal variations, use the month name.
 
     Returns
     -------
@@ -423,11 +370,6 @@ def calc_u_intensities(method=None, output=None, file_name="", force=False, **kw
     angles = kwargs.pop("angles", constants.angles)
     depths = kwargs.pop("depths", constants.slant_depths)
     E_th = kwargs.pop("E_th", 0)
-    primary_model = kwargs.pop("primary_model", "GSF")
-    interaction_model = kwargs.pop("interaction_model", "SIBYLL-2.3c")
-    atmosphere = kwargs.pop("atmosphere", "CORSIKA")
-    location = kwargs.pop("location", "USStd")
-    month = kwargs.pop("month", None)
 
     if kwargs:
 
@@ -459,25 +401,6 @@ def calc_u_intensities(method=None, output=None, file_name="", force=False, **kw
         if constants.get_verbose() > 1:
             print("Calculating underground fluxes.")
 
-        if s_fluxes is None:
-
-            s_fluxes = surface.load_s_fluxes_from_file(
-                primary_model,
-                interaction_model,
-                atmosphere,
-                location,
-                month,
-                force=force,
-            )
-
-        if survival_probability_tensor is None:
-
-            survival_probability_tensor = (
-                propagation.load_survival_probability_tensor_from_file(force=force)
-            )
-
-        # Check that the surface flux matrix and survival probability tensor have been loaded properly
-
         if s_fluxes is None or survival_probability_tensor is None:
 
             raise Exception(
@@ -499,9 +422,9 @@ def calc_u_intensities(method=None, output=None, file_name="", force=False, **kw
 
     assert u_fluxes.shape == (
         28,
-        91,
-        20,
-    ), f"The underground flux tensor does not have the correct shape. The shape must be (28, 91, 20), not {u_fluxes.shape}. Set full_tensor to True in the underground.calc_u_fluxes() function in order to return a tensor of shape (28, 91, 20). Alternatively, try passing a surface flux matrix and / or a survival probability tensor in as parameters."
+        len(mtc.ENERGIES),
+        len(mtc.ANGLES_FOR_S_FLUXES),
+    ), f"The underground flux tensor does not have the correct shape. The shape must be (28, {mtc.ENERGIES}, {mtc.ANGLES_FOR_S_FLUXES}), not {u_fluxes.shape}. Set full_tensor to True in the underground.calc_u_fluxes() function in order to return a tensor of shape (28, 91, 20). Alternatively, try passing a surface flux matrix and / or a survival probability tensor in as parameters."
 
     # Calculate the intensities according to the method type
     # sd = Single-differential intensities
@@ -518,11 +441,6 @@ def calc_u_intensities(method=None, output=None, file_name="", force=False, **kw
             u_fluxes,
             angles,
             E_th_i,
-            primary_model,
-            interaction_model,
-            atmosphere,
-            location,
-            month,
             output,
             file_name,
             force,
@@ -536,11 +454,6 @@ def calc_u_intensities(method=None, output=None, file_name="", force=False, **kw
             u_fluxes,
             depths,
             E_th_i,
-            primary_model,
-            interaction_model,
-            atmosphere,
-            location,
-            month,
             output,
             file_name,
             force,
@@ -553,11 +466,6 @@ def calc_u_intensities(method=None, output=None, file_name="", force=False, **kw
         return _calc_u_intensities_dd(
             u_fluxes,
             E_th_i,
-            primary_model,
-            interaction_model,
-            atmosphere,
-            location,
-            month,
             output,
             file_name,
             force,
@@ -581,14 +489,9 @@ def _calc_u_intensities_sd(
     u_fluxes,
     angles,
     E_th_i,
-    primary_model,
-    interaction_model,
-    atmosphere,
-    location,
-    month,
     output,
     file_name,
-    force,
+    force
 ):
 
     """This function calculates single-differential or vertical-equivalent underground intensities for flat overburdens."""
@@ -631,7 +534,7 @@ def _calc_u_intensities_sd(
 
         for j in range(len(constants.ANGLES_FOR_S_FLUXES)):
 
-            u_intensities[x, j] = scii.simpson(
+            u_intensities[x, j] = scii.simps(
                 u_fluxes[x, E_th_i:, j], constants.ENERGIES[E_th_i:]
             )
 
@@ -710,14 +613,9 @@ def _calc_u_intensities_tr(
     u_fluxes,
     depths,
     E_th_i,
-    primary_model,
-    interaction_model,
-    atmosphere,
-    location,
-    month,
     output,
     file_name,
-    force,
+    force
 ):
 
     """This function calculates true vertical underground intensities for flat overburdens."""
@@ -747,7 +645,7 @@ def _calc_u_intensities_tr(
 
     u_fluxes_tr = u_fluxes[:, :, 0]
     u_intensities_tr = [
-        scii.simpson(u_fluxes_tr[x, E_th_i:], constants.ENERGIES[E_th_i:])
+        scii.simps(u_fluxes_tr[x, E_th_i:], constants.ENERGIES[E_th_i:])
         for x in range(len(constants._SLANT_DEPTHS))
     ]
 
@@ -799,11 +697,6 @@ def _calc_u_intensities_tr(
 def _calc_u_intensities_dd(
     u_fluxes,
     E_th_i,
-    primary_model,
-    interaction_model,
-    atmosphere,
-    location,
-    month,
     output,
     file_name,
     force,
@@ -842,7 +735,7 @@ def _calc_u_intensities_dd(
 
         for j in range(len(constants.ANGLES_FOR_S_FLUXES)):
 
-            u_intensities[x, j] = scii.simpson(
+            u_intensities[x, j] = scii.simps(
                 u_fluxes[x, E_th_i:, j], constants.ENERGIES[E_th_i:]
             )
 
@@ -948,28 +841,6 @@ def calc_u_tot_flux(force=False, **kwargs):
     E_th : float, optional (default: 0)
         An energy threshold in [MeV].
 
-    primary_model : str in {"GSF", "HG", "GH", "ZS", "ZSP", "PL27"} or tuple, optional (default: "GSF")
-        The primary flux model to use in MCEq. Options:
-        GSF  = GlobalSplineFitBeta
-        HG   = HillasGaisser2012 (H3a)
-        GH   = GaisserHonda
-        ZS   = Zatsepin-Sokolskaya (Default)
-        ZSP  = Zatsepin-Sokolskaya (PAMELA)
-        PL27 = SimplePowerlaw27
-        Alternatively, this can be set with a tuple. For example: (pm.GaisserStanevTilav, "3-gen").
-
-    interaction_model : str, optional (default: "SIBYLL-2.3c")
-        The hadronic interaction model to use in MCEq. See the Tutorial or MCEq documentation for a list of options.
-
-    atmosphere : {"CORSIKA", "MSIS00"}, optional (default: "CORSIKA")
-        The atmospheric model to use in MCEq. For US Standard Atmosphere, use "CORSIKA". For seasonal variations, use "MSIS00".
-
-    location : str, optional (default: "USStd")
-        The name of the location for which to calculate the surface fluxes. See the Tutorial or MCEq documentation for a list of options.
-
-    month : str, optional (default: None)
-        The month for which to calculate the surface fluxes. For US Standard Atmosphere, use None. For seasonal variations, use the month name.
-
     Returns
     -------
     u_tot_flux : float
@@ -1009,7 +880,7 @@ def calc_u_tot_flux(force=False, **kwargs):
         u_tot_flux = (
             2
             * np.pi
-            * scii.simpson(u_intensities[::-1], np.cos(np.radians(angles[::-1])))
+            * scii.simps(u_intensities[::-1], np.cos(np.radians(angles[::-1])))
         )
 
         return u_tot_flux
@@ -1031,9 +902,9 @@ def calc_u_tot_flux(force=False, **kwargs):
         # Calculate the total underground flux
         # Integrate over all angles as defined by the mountain profile file
 
-        u_tot_flux = scii.simpson(
+        u_tot_flux = scii.simps(
             [
-                scii.simpson(
+                scii.simps(
                     u_intensities[j, :], np.radians(constants.mountain.azimuthal)
                 )
                 for j in range(len(constants.mountain.zenith))
