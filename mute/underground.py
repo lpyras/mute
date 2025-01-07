@@ -68,7 +68,7 @@ def calc_u_fluxes(
     Parameters
     ----------
     s_fluxes : NumPy ndarray, optional (default: taken from surface.load_s_fluxes_from_file())
-        A surface flux matrix of shape (n_energies, n_angles).
+        A surface flux matrix of shape (n_energies, n_surface_angles).
 
     survival_probability_tensor : NumPy ndarray, optional (default: taken from propagation.load_survival_probability_tensor_from_file())
         A survival probability tensor of shape (n_energies, n_angles, n_energies).

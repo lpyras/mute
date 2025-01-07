@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.integrate as scii
 import datetime
-sys.path.append('/home/lpyras/utah/mute_fork/mute/')
 import mute.constants as mtc
 import mute.surface as mts
 import mute.underground as mtu

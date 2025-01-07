@@ -400,7 +400,7 @@ def calc_s_tot_flux(
     Parameters
     ----------
     s_fluxes : NumPy ndarray, optional (default: taken from surface.load_s_fluxes_from_file())
-        A surface flux matrix of shape (n_energies, n_angles).
+        A surface flux matrix of shape (n_energies, n_surface_angles).
 
     force : bool, optional (default: False)
         If True, force the calculation of new arrays or matrices and the creation of new directories if required.
@@ -434,7 +434,7 @@ def calc_s_tot_flux(
 
     # Calculate the total surface flux
     # Because constants.ANGLES_FOR_S_FLUXES goes (0..89), cos(angles) goes (1..0)
-    # cos(constants.ANGLES_FOR_S_FLUXES) is decreasing, but scii.simpsonon() wants an increasing array
+    # cos(constants.ANGLES_FOR_S_FLUXES) is decreasing, but scii.simpson() wants an increasing array
     # Therefore, integrate backwards, using [::-1] on the integrand and steps
     # Otherwise, the answer will be negative
 
