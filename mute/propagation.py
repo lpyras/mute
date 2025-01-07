@@ -208,7 +208,7 @@ def propagate_muons(seed=0, job_array_number=0, output=None, force=False):
     Returns
     -------
     u_energies : NumPy ndarray
-        A two-dimensional array containing lists of underground energies for muons that survived the propagation. The shape of the array will be (91, 28), and the underground energies will be in units of [MeV].
+        A two-dimensional array containing lists of underground energies for muons that survived the propagation. The shape of the array will be (n_energies, n_angles), and the underground energies will be in units of [MeV].
     """
 
     # Check values
@@ -310,7 +310,7 @@ def _load_u_energies_from_files(file_name_pattern, n_job=1, force=False):
     Returns
     -------
     u_energies : NumPy ndarray
-        A two-dimensional array containing lists of underground energies for muons that survived the propagation. The shape of the array will be (91, 28), and the underground energies will be in units of [MeV].
+        A two-dimensional array containing lists of underground energies for muons that survived the propagation. The shape of the array will be (n_energies, n_angles), and the underground energies will be in units of [MeV].
     """
 
     # Check values
@@ -403,7 +403,7 @@ def calc_survival_probability_tensor(
     Returns
     -------
     survival_probability_tensor : NumPy ndarray
-        A three-dimensional array containing the survival probabilities. The shape of the array will be (91, 28, 91), and the survival probabilities will be in units of [(MeV^2 km.w.e.)^-1].
+        A three-dimensional array containing the survival probabilities. The shape of the array will be (n_energies, n_angles, n_energies), and the survival probabilities will be in units of [(MeV^2 km.w.e.)^-1].
     """
 
     # Check values
@@ -571,7 +571,7 @@ def load_survival_probability_tensor_from_file(file_name="", force=False):
     Returns
     -------
     survival_probability_tensor : NumPy ndarray
-        A three-dimensional array containing the survival probabilities. The shape of the array will be (91, 28, 91), and the survival probabilities will be in units of [(MeV^2 km.w.e.)^-1].
+        A three-dimensional array containing the survival probabilities. The shape of the array will be (n_energies, n_angles, n_energies), and the survival probabilities will be in units of [(MeV^2 km.w.e.)^-1].
     """
 
     # Check values

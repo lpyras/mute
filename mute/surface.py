@@ -79,7 +79,7 @@ def calc_s_fluxes(
     Returns
     -------
     s_fluxes : NumPy ndarray
-        A two-dimensional array containing the surface fluxes. The shape will be (91, 20), and the fluxes will be in units of [(cm^2 s sr MeV)^-1].
+        A two-dimensional array containing the surface fluxes. The shape will be (n_energies, n_surface_angles), and the fluxes will be in units of [(cm^2 s sr MeV)^-1].
     """
 
     # Import packages
@@ -271,7 +271,7 @@ def load_s_fluxes_from_file(file_name=""):
     Returns
     -------
     s_fluxes : NumPy ndarray
-        A two-dimensional array containing the surface fluxes. The shape will be (91, 20), and the fluxes will be in units of [(cm^2 s sr MeV)^-1].
+        A two-dimensional array containing the surface fluxes. The shape will be (n_energies, n_surface_angles), and the fluxes will be in units of [(cm^2 s sr MeV)^-1].
     """
 
     if os.path.exists(file_name):
@@ -317,7 +317,7 @@ def calc_s_intensities(
     Parameters
     ----------
     s_fluxes : NumPy ndarray, optional (default: taken from surface.load_s_fluxes_from_file())
-        A surface flux matrix of shape (91, 20).
+        A surface flux matrix of shape (n_energies, n_surface_angles).
 
     store_output : bool, optional (default: True)
 
@@ -327,7 +327,7 @@ def calc_s_intensities(
     Returns
     -------
     s_intensities : NumPy ndarray
-        A one-dimensional array containing the surface intensities. The length will be 20, and the intensities will be in units of [(cm^2 s sr)^-1].
+        A one-dimensional array containing the surface intensities. The length will be n_surface_angles, and the intensities will be in units of [(cm^2 s sr)^-1].
     """
 
     # Check values
@@ -347,7 +347,7 @@ def calc_s_intensities(
 
     # Calculate the surface intensities
     s_intensities = [
-        scii.simps(s_fluxes[:, j], constants.ENERGIES)
+        scii.simpson(s_fluxes[:, j], constants.ENERGIES)
         for j in range(len(constants.ANGLES_FOR_S_FLUXES))
     ]
 
@@ -434,14 +434,14 @@ def calc_s_tot_flux(
 
     # Calculate the total surface flux
     # Because constants.ANGLES_FOR_S_FLUXES goes (0..89), cos(angles) goes (1..0)
-    # cos(constants.ANGLES_FOR_S_FLUXES) is decreasing, but scii.simpson() wants an increasing array
+    # cos(constants.ANGLES_FOR_S_FLUXES) is decreasing, but scii.simpsonon() wants an increasing array
     # Therefore, integrate backwards, using [::-1] on the integrand and steps
     # Otherwise, the answer will be negative
 
     s_tot_flux = (
         2
         * np.pi
-        * scii.simps(
+        * scii.simpson(
             s_intensities[::-1], np.cos(np.radians(constants.ANGLES_FOR_S_FLUXES[::-1]))
         )
     )
