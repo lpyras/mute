@@ -11,6 +11,7 @@
 # Import packages
 import os
 import numpy as np
+import pickle
 import scipy.integrate as scii
 import scipy.interpolate as sciint
 
@@ -201,24 +202,36 @@ def calc_u_fluxes(
                     "{0}_Underground_Fluxes.txt".format(constants.get_lab()),
                 )
 
-            file_out = open(output_file_name, "w")
+            if ".txt" in output_file_name:
+                file_out = open(output_file_name, "w")
 
             for x in range(len(constants._SLANT_DEPTHS)):
 
                 for u in range(len(constants.ENERGIES)):
 
                     for j in range(len(constants.ANGLES_FOR_S_FLUXES)):
-
-                        file_out.write(
-                            "{0:1.5f} {1:1.14f} {2:1.5f} {3:1.14e}\n".format(
-                                constants._SLANT_DEPTHS[x],
-                                constants.ENERGIES[u],
-                                constants.ANGLES_FOR_S_FLUXES[j],
-                                u_fluxes[x, u, j],
+                        if ".txt" in output_file_name:
+                            file_out.write(
+                                "{0:1.5f} {1:1.14f} {2:1.5f} {3:1.14e}\n".format(
+                                    constants._SLANT_DEPTHS[x],
+                                    constants.ENERGIES[u],
+                                    constants.ANGLES_FOR_S_FLUXES[j],
+                                    u_fluxes[x, u, j],
+                                )
                             )
-                        )
 
-            file_out.close()
+            if ".txt" in output_file_name:
+                file_out.close()
+
+            else:
+                dict_to_save = {
+                    "slant_depths": np.array(constants._SLANT_DEPTHS),
+                    "energies": np.array(constants.ENERGIES),
+                    "surface_zenith_angles": np.array(constants.ANGLES_FOR_S_FLUXES),
+                    "fluxes": np.array(u_fluxes)
+                }
+                with open(output_file_name, "wb") as f:
+                    pickle.dump(dict_to_save, f)
 
             if constants.get_verbose() > 1:
                 print(f"Underground fluxes written to {output_file_name}.")
