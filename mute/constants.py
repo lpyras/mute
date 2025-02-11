@@ -15,24 +15,17 @@ from collections import namedtuple
 
 import numpy as np
 
-# Energies in [MeV]
+# Define default user-set global constants
 
-_E_BINS = np.logspace(1.9, 14, 122)[:-30]  # Bin edges
-_E_WIDTHS = np.diff(_E_BINS)  # Bin widths
-ENERGIES = np.sqrt(_E_BINS[1:] * _E_BINS[:-1])  # Bin centers
-
-# Slant depths in [km.w.e.] and angles in [degrees]
-# These are the defaults used to construct the matrices
-# The user can enter their own angles in the function calls, which will interpolate over the grids created by these angles
-
-_X_MIN = 0.5
-_X_MAX = 14
-
-_SLANT_DEPTHS = np.linspace(_X_MIN, _X_MAX, int(2 * (_X_MAX - _X_MIN) + 1))
-_ANGLES = np.degrees(np.arccos(_X_MIN / _SLANT_DEPTHS))
-
-slant_depths = _SLANT_DEPTHS
-angles = _ANGLES # angles can be changed by set_vertical_depth
+_verbose = 2
+_output = True
+_directory = os.path.join(os.path.dirname(__file__), "data")
+_lab = "Default"
+_overburden = "flat"
+_medium = "rock"
+_density = 2.65
+_water_density = 0.997
+_n_muon = 100000
 
 # Angles in [degrees] specifically for the calculation of surface flux matrices
 angles_lin_cos_theta = np.arccos(np.linspace(1,0,11))
@@ -41,12 +34,29 @@ angles_lin_cos_theta_high = angles_lin_cos_theta[1:]
 angles_lin_cos_theta_center = np.arccos((np.cos(angles_lin_cos_theta_high)+np.cos(angles_lin_cos_theta_low))/2)
 angles_lin_cos_theta_center_deg=np.rad2deg(angles_lin_cos_theta_center)
 
+# Energies in [MeV]
+_E_BINS = np.logspace(1.9, 14, 122)  # Bin edges
+_E_WIDTHS = np.diff(_E_BINS)  # Bin widths
+ENERGIES = np.sqrt(_E_BINS[1:] * _E_BINS[:-1])  # Bin centers
+
+#initialize slant depths and angles, this can be changed with set_vertical_depth
+# Slant depths in [km.w.e.] and angles in [degrees]
+# These are the defaults used to construct the matrices
+# The user can enter their own angles in the function calls, which will interpolate over the grids created by these angles
+# for homogeneous media, the slant depth is given by X = rho * line_of_sight = rho * (d / cos(zenith)) with rho = rho_medium / rho_water
+
+_X_MIN = 0.5 # [km.w.e.] (10**5 g/cm−2): X_min = rho * d_min
+_X_MAX = 14
+_SLANT_DEPTHS = np.linspace(_X_MIN, _X_MAX, int(2 * (_X_MAX - _X_MIN) + 1))
+_ANGLES = np.degrees(np.arccos(_X_MIN / _SLANT_DEPTHS))
+_vertical_depth = _X_MIN
+
+slant_depths = _SLANT_DEPTHS
+angles = _ANGLES
+
 ANGLES_FOR_S_FLUXES = angles_lin_cos_theta_center_deg
 
-# Other constants
 # The rest mass of a muon in [MeV]
-# Months of the year
-
 _MU_MASS = 105.6583745
 
 MONTHS = [
@@ -77,18 +87,6 @@ MONTHS_SNAMES = [
     "Nov.",
     "Dec.",
 ]
-
-# Define default user-set global constants
-
-_verbose = 2
-_output = True
-_directory = os.path.join(os.path.dirname(__file__), "data")
-_lab = "Default"
-_overburden = "flat"
-_vertical_depth = _X_MIN
-_medium = "rock"
-_density = 2.65
-_n_muon = 100000
 
 # Keep track of which survival probability tensor is loaded
 
@@ -234,8 +232,6 @@ def get_overburden():
 
 
 # Vertical depth in [km.w.e.]
-
-
 def set_vertical_depth(vertical_depth):
 
     """Set the vertical depth, h. The default is 0.5 km.w.e."""
@@ -243,27 +239,39 @@ def set_vertical_depth(vertical_depth):
     global _vertical_depth
     global slant_depths
     global angles
-
-    _vertical_depth = vertical_depth
+    global _X_MAX
+    global _X_MIN
+    global _ANGLES
+    global _SLANT_DEPTHS
 
     # Use the set vertical depth to calculate new slant depths and zenith angles
     # Only do this for flat overburdens
     # For mountains, the slant depths and angles will be calculated in load_mountain()
-
-    if vertical_depth < _SLANT_DEPTHS[0] and not shallow_extrapolation:
-
-        raise Exception(
-            "The minimum default available slant depth is 0.5 km.w.e. Set constants.shallow_extrapolation to True to enable calculations for depths lower than 0.5 km.w.e. (not recommended)."
-        )
-
     if get_overburden() == "flat":
-
-        slant_depths = np.sort(
-            np.concatenate(
-                ([_vertical_depth], _SLANT_DEPTHS[_SLANT_DEPTHS > _vertical_depth])
-            )
-        )
+        print(f'define new slant depths and angles according to vertical depth {vertical_depth} km w.e.')
+        _vertical_depth = vertical_depth
+        slant_depths = vertical_depth / np.cos(angles_lin_cos_theta_center) #vertical_depth is at cos(zenith=0) = 1
         angles = np.degrees(np.arccos(_vertical_depth / slant_depths))
+        _X_MIN = slant_depths[0]
+        _X_MAX = slant_depths[-1]
+        _SLANT_DEPTHS = slant_depths
+        _ANGLES = angles
+
+    #if vertical_depth < _SLANT_DEPTHS[0] and not shallow_extrapolation:
+#
+    #    raise Exception(
+    #        "The minimum default available slant depth is 0.5 km.w.e. Set constants.shallow_extrapolation to True to enable calculations for depths lower than 0.5 km.w.e. (not recommended)."
+    #    )
+#
+    #if get_overburden() == "flat":
+#
+    #    slant_depths = np.sort(
+    #        np.concatenate(
+    #            ([_vertical_depth], _SLANT_DEPTHS[_SLANT_DEPTHS > _vertical_depth])
+    #        )
+    #    )
+    #    angles = np.degrees(np.arccos(_vertical_depth / slant_depths))
+
 
 
 def get_vertical_depth():
@@ -397,11 +405,10 @@ def _check_constants(force=False):
 
         assert get_vertical_depth() is not None, "Initial vertical depth must be set."
         assert get_vertical_depth() > 0, "Initial vertical depth must be positive."
-
         assert len(slant_depths) == len(angles) and np.allclose(
             slant_depths, get_vertical_depth() / np.cos(np.radians(angles))
         ), "slant_depths must correspond to angles. Do not assign constants.slant_depths or constants.angles directly. Instead, use constants.set_vertical_depth() in combination with the angles and depths parameters in individual functions. Run constants.clear() to reset the values of slant_depths and / or angles."
-
+    #TODO warning is not helpful
     # Check that a mountain profile has been loaded, if needed
 
     elif get_overburden() == "mountain":
@@ -493,7 +500,7 @@ def load_mountain(file_name, units="kmwe", density=get_density(), max_slant_dept
     density_mult = 1
 
     if units == "m" or units == "km":
-        density_mult = density / 0.997
+        density_mult = density / _water_density
 
     # If the data is in [m] or [m.w.e.], convert to [km.w.e.]
 
