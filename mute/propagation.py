@@ -14,6 +14,7 @@ import os
 
 import numpy as np
 from tqdm import tqdm
+import pickle
 
 import mute.constants as constants
 
@@ -528,24 +529,36 @@ def calc_survival_probability_tensor(
                 ),
             )
 
-        file_out = open(file_name, "w")
+        if ".txt" in file_name:
+            file_out = open(file_name, "w")
 
-        for i in range(len(constants.ENERGIES)):
+            for i in range(len(constants.ENERGIES)):
 
-            for x in range(len(constants._SLANT_DEPTHS)):
+                for x in range(len(constants._SLANT_DEPTHS)):
 
-                for u in range(len(constants.ENERGIES)):
+                    for u in range(len(constants.ENERGIES)):
 
-                    file_out.write(
-                        "{0:1.14f} {1:1.5f} {2:1.14f} {3:1.14e}\n".format(
-                            constants.ENERGIES[i],
-                            constants._SLANT_DEPTHS[x],
-                            constants.ENERGIES[u],
-                            survival_probability_tensor[i, x, u],
+                        file_out.write(
+                            "{0:1.14f} {1:1.5f} {2:1.14f} {3:1.14e}\n".format(
+                                constants.ENERGIES[i],
+                                constants._SLANT_DEPTHS[x],
+                                constants.ENERGIES[u],
+                                survival_probability_tensor[i, x, u],
+                            )
                         )
-                    )
 
-        file_out.close()
+            file_out.close()
+
+        else:
+            dict_to_save = {
+                "surface_energies": np.array(constants.ENERGIES),
+                "slant_depths": np.array(constants._SLANT_DEPTHS),
+                "underground_energies": np.array(constants.ENERGIES),
+                "survival_probability_tensor": np.array(survival_probability_tensor)
+            }
+
+            with open(file_name, "wb") as f:
+                pickle.dump(dict_to_save, f)
 
         if constants.get_verbose() > 1:
             print(f"Survival probabilities written to {file_name}.")
